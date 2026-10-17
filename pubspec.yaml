@@ -1,0 +1,27 @@
+name: ekyc_app
+description: Bank-grade customer eKYC capture - NID front/back and live selfie with active liveness.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  camera: ^0.11.0+2
+  # camera_android_camerax: ^0.7.4
+
+  google_mlkit_face_detection: ^0.13.1
+  google_mlkit_text_recognition: ^0.15.0
+  image: ^4.2.0
+  path_provider: ^2.1.4
+  http: ^1.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
