@@ -1,4 +1,4 @@
-# eKYC capture app (Flutter)
+# Ekyc capture app (Flutter)
 
 NID front and back capture with on-device quality checks, plus a live selfie
 with randomized active liveness. Built for a bank officer or agent assisting
