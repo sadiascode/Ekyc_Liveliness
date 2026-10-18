@@ -22,6 +22,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
   late final _nid = TextEditingController(text: widget.data.front?.ocr?.nidNumber ?? '');
   late final _dob = TextEditingController(text: widget.data.front?.ocr?.dateOfBirth ?? '');
   late final _name = TextEditingController(text: widget.data.front?.ocr?.name ?? '');
+  late final _bloodGroup = TextEditingController(
+    text: widget.data.back?.ocr?.bloodGroup ?? 'Not detected',
+  );
   final _mobile = TextEditingController();
   bool _consent = false;
   bool _submitting = false;
@@ -31,6 +34,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     _nid.dispose();
     _dob.dispose();
     _name.dispose();
+    _bloodGroup.dispose();
     _mobile.dispose();
     super.dispose();
   }
@@ -149,6 +153,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   final ok = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(s) && DateTime.tryParse(s) != null;
                   return ok ? null : 'Use the format YYYY-MM-DD';
                 },
+              ),
+              const SizedBox(height: 12),
+              // Blood Group
+              TextFormField(
+                controller: _bloodGroup,
+                decoration: const InputDecoration(labelText: 'Blood Group'),
               ),
               const SizedBox(height: 12),
               TextFormField(

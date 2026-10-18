@@ -1,4 +1,5 @@
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/kyc_data.dart';
 
@@ -34,6 +35,7 @@ class NidOcrService {
       nidNumber: nid,
       dateOfBirth: _extractDob(text),
       name: _extractName(lines),
+      bloodGroup: _extractBloodGroup(text),
       looksLikeNidFront: nid != null ||
           upper.contains('NATIONAL ID') ||
           upper.contains('ID NO'),
@@ -80,6 +82,41 @@ class NidOcrService {
       final inline = colon >= 0 ? lines[i].substring(colon + 1).trim() : '';
       if (inline.length > 2) return inline;
       if (i + 1 < lines.length) return lines[i + 1];
+    }
+    return null;
+  }
+
+  static String? _extractBloodGroup(String text) {
+    final upper = text.toUpperCase();
+    // Match variations: B+, B +, B+, B POSITIVE, B+POSITIVE, B+, etc.
+    // Handle various spacing, punctuation, and label formats
+    final pattern = RegExp(r'(?:BLOOD\s*GROUP\s*[:\s]*)?(A[\s\+\-]+|B[\s\+\-]+|AB[\s\+\-]+|O[\s\+\-]+|A\s*POSITIVE|A\s*NEGATIVE|B\s*POSITIVE|B\s*NEGATIVE|AB\s*POSITIVE|AB\s*NEGATIVE|O\s*POSITIVE|O\s*NEGATIVE)');
+    final match = pattern.firstMatch(upper);
+    
+    if (kDebugMode && match != null) {
+      debugPrint('Blood group matched: ${match.group(0)}');
+    }
+    
+    if (match != null) {
+      var bg = match.group(0)!.trim();
+      // Remove "BLOOD GROUP" prefix if present
+      bg = bg.replaceAll(RegExp(r'BLOOD\s*GROUP\s*[:\s]*'), '');
+      // Normalize spacing and remove all whitespace
+      bg = bg.replaceAll(RegExp(r'\s+'), '');
+      // Convert POSITIVE/NEGATIVE to +/-
+      if (bg.contains('POSITIVE')) {
+        bg = bg.replaceAll('POSITIVE', '+');
+      } else if (bg.contains('NEGATIVE')) {
+        bg = bg.replaceAll('NEGATIVE', '-');
+      }
+      if (kDebugMode) {
+        debugPrint('Blood group extracted: $bg');
+      }
+      return bg;
+    }
+    
+    if (kDebugMode) {
+      debugPrint('Blood group not found in OCR text');
     }
     return null;
   }

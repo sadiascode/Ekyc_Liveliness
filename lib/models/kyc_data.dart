@@ -30,6 +30,7 @@ class NidOcrData {
     this.nidNumber,
     this.dateOfBirth,
     this.name,
+    this.bloodGroup,
     this.looksLikeNidFront = false,
   });
 
@@ -37,6 +38,7 @@ class NidOcrData {
   final String? nidNumber;
   final String? dateOfBirth; // yyyy-MM-dd
   final String? name;
+  final String? bloodGroup;
   final bool looksLikeNidFront;
 }
 

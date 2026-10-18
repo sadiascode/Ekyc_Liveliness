@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/camera_errors.dart';
@@ -169,7 +170,11 @@ class _NidCaptureScreenState extends State<NidCaptureScreen> with WidgetsBinding
       final file = File('${dir.path}/nid_${widget.side.name}_${DateTime.now().millisecondsSinceEpoch}.jpg');
       await file.writeAsBytes(processed.jpg, flush: true);
 
-      final ocr = widget.side == NidSide.front ? await _ocr.readFront(file.path) : null;
+      final ocr = await _ocr.readFront(file.path);
+
+      if (kDebugMode && widget.side == NidSide.back) {
+        debugPrint('Back-side OCR - Blood group detected: ${ocr.bloodGroup}');
+      }
 
       if (!mounted) return;
       setState(() {
