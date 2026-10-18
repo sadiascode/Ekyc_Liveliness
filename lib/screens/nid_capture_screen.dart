@@ -35,8 +35,7 @@ class NidCaptureScreen extends StatefulWidget {
 
 enum _Phase { camera, processing, review }
 
-class _NidCaptureScreenState extends State<NidCaptureScreen>
-    with WidgetsBindingObserver {
+class _NidCaptureScreenState extends State<NidCaptureScreen> with WidgetsBindingObserver {
   /// ISO/IEC 7810 ID-1 card: 85.60 x 53.98 mm.
   static const _cardAspect = 85.6 / 53.98;
 
@@ -69,8 +68,7 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final c = _controller;
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
       if (c != null) {
         _controller = null;
         c.dispose();
@@ -86,16 +84,13 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
     _initializing = true;
     try {
       final cameras = await availableCameras();
-      final back = cameras
-              .where((c) => c.lensDirection == CameraLensDirection.back)
-              .firstOrNull ??
+      final back = cameras.where((c) => c.lensDirection == CameraLensDirection.back).firstOrNull ??
           cameras.firstOrNull;
       if (back == null) {
         if (mounted) setState(() => _error = 'No camera found on this device.');
         return;
       }
-      final c =
-          CameraController(back, ResolutionPreset.veryHigh, enableAudio: false);
+      final c = CameraController(back, ResolutionPreset.veryHigh, enableAudio: false);
       await c.initialize();
       await c.setFlashMode(FlashMode.off);
       try {
@@ -117,28 +112,12 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
     }
   }
 
-  Rect _frameFor(Size screen,
-      {double topBarHeight = 80, double bottomControlHeight = 140}) {
-    // Calculate available vertical space between top bar and bottom controls
-    final availableHeight = screen.height - topBarHeight - bottomControlHeight;
-
-    // Calculate frame height based on available space (max 75% of available height)
-    final maxFrameHeight = availableHeight * 0.75;
-
-    // Calculate frame width from aspect ratio
-    final maxFrameWidth = maxFrameHeight * _cardAspect;
-
-    // Use the smaller of max width or 90% of screen width for side margins
-    final frameWidth = math.min(maxFrameWidth, screen.width * 0.90);
-    final frameHeight = frameWidth / _cardAspect;
-
-    // Center the frame in the available space
-    final centerY = topBarHeight + availableHeight / 2;
-
+  Rect _frameFor(Size screen) {
+    final width = screen.width * 0.88;
     return Rect.fromCenter(
-      center: Offset(screen.width / 2, centerY),
-      width: frameWidth,
-      height: frameHeight,
+      center: Offset(screen.width / 2, screen.height * 0.42),
+      width: width,
+      height: width / _cardAspect,
     );
   }
 
@@ -155,12 +134,8 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
     final screen = _screen;
     final frame = _frame;
     final preview = c?.value.previewSize;
-    if (c == null ||
-        !c.value.isInitialized ||
-        c.value.isTakingPicture ||
-        screen == null ||
-        frame == null ||
-        preview == null) {
+    if (c == null || !c.value.isInitialized || c.value.isTakingPicture ||
+        screen == null || frame == null || preview == null) {
       return;
     }
 
@@ -175,8 +150,7 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
       // Map the on-screen frame into the photo, accounting for the
       // cover-fit preview cropping. A small margin keeps card edges.
       final portrait = Size(preview.height, preview.width);
-      final scale = math.max(
-          screen.width / portrait.width, screen.height / portrait.height);
+      final scale = math.max(screen.width / portrait.width, screen.height / portrait.height);
       final shown = Size(portrait.width * scale, portrait.height * scale);
       final dx = (screen.width - shown.width) / 2;
       final dy = (screen.height - shown.height) / 2;
@@ -192,12 +166,10 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
       await deleteQuietly(shot.path);
 
       final dir = await KycStorage.dir();
-      final file = File(
-          '${dir.path}/nid_${widget.side.name}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final file = File('${dir.path}/nid_${widget.side.name}_${DateTime.now().millisecondsSinceEpoch}.jpg');
       await file.writeAsBytes(processed.jpg, flush: true);
 
-      final ocr =
-          widget.side == NidSide.front ? await _ocr.readFront(file.path) : null;
+      final ocr = widget.side == NidSide.front ? await _ocr.readFront(file.path) : null;
 
       if (!mounted) return;
       setState(() {
@@ -208,8 +180,7 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
       if (!mounted) return;
       setState(() => _phase = _Phase.camera);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('The card could not be captured. Try again.')),
+        const SnackBar(content: Text('The card could not be captured. Try again.')),
       );
     }
   }
@@ -246,126 +217,55 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
           : LayoutBuilder(
               builder: (context, box) {
                 final screen = box.biggest;
-                // Define UI spacing constants
-                final topBarHeight = 80.0;
-                final bottomControlHeight = 140.0;
-                final frame = _frameFor(screen,
-                    topBarHeight: topBarHeight,
-                    bottomControlHeight: bottomControlHeight);
+                final frame = _frameFor(screen);
                 _screen = screen;
                 _frame = frame;
 
-                return Stack(
-                  fit: StackFit.expand,
+                return SizedBox.expand(
+                  child: Stack(
                   children: [
-                    // Full-screen camera preview
                     if (c != null && c.value.isInitialized)
                       Positioned.fill(child: CameraCoverPreview(controller: c)),
-
-                    // Dark overlay outside the NID frame
                     Positioned.fill(
                       child: CustomPaint(
-                        painter:
-                            CardFramePainter(frame: frame, color: Colors.white),
+                        painter: CardFramePainter(frame: frame, color: Colors.white),
                       ),
                     ),
-
-                    // Top controls: close button, title, flash toggle
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          child: Row(
-                            children: [
-                              // Close button with subtle background for visibility
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: IconButton(
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  icon: const Icon(Icons.close,
-                                      color: Colors.white, size: 24),
-                                  tooltip: 'Close',
-                                  padding: const EdgeInsets.all(8),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Title
-                              Text(
-                                widget.side.title,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.2),
-                              ),
-                              const Spacer(),
-                              // Flash toggle with subtle background
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: IconButton(
-                                  onPressed: c == null ? null : _toggleTorch,
-                                  icon: Icon(
-                                      _torchOn ? Icons.flash_on : Icons.flash_off,
-                                      color: Colors.white,
-                                      size: 24),
-                                  tooltip: _torchOn
-                                      ? 'Turn light off'
-                                      : 'Turn light on',
-                                  padding: const EdgeInsets.all(8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Short instruction hint above the frame
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: topBarHeight + 20,
+                    SafeArea(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
-                        child: Text(
-                          'Align your card within the frame',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 14,
-                              height: 1.3,
-                              fontWeight: FontWeight.w500),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.close, color: Colors.white),
+                              tooltip: 'Close',
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              widget.side.title,
+                              style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              onPressed: c == null ? null : _toggleTorch,
+                              icon: Icon(_torchOn ? Icons.flash_on : Icons.flash_off, color: Colors.white),
+                              tooltip: _torchOn ? 'Turn light off' : 'Turn light on',
+                            ),
+                          ],
                         ),
                       ),
                     ),
-
-                    // Detailed instruction below the frame
                     Positioned(
-                      left: 24,
-                      right: 24,
+                      left: 32,
+                      right: 32,
                       top: frame.bottom + 24,
                       child: Text(
                         widget.side.hint,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            height: 1.4,
-                            fontWeight: FontWeight.w400),
+                        style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.4),
                       ),
                     ),
-
-                    // Bottom shutter button
                     Positioned(
                       left: 0,
                       right: 0,
@@ -373,19 +273,15 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
                       child: SafeArea(
                         top: false,
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 36),
-                          child: Center(
-                              child: _ShutterButton(
-                                  onPressed: c == null ? null : _capture)),
+                          padding: const EdgeInsets.only(bottom: 28),
+                          child: Center(child: _ShutterButton(onPressed: c == null ? null : _capture)),
                         ),
                       ),
                     ),
-
-                    // Processing overlay
                     if (_phase == _Phase.processing)
-                      const Positioned.fill(
-                          child: BusyOverlay(label: 'Checking image quality')),
+                      const Positioned.fill(child: BusyOverlay(label: 'Checking image quality')),
                   ],
+                ),
                 );
               },
             ),
@@ -416,9 +312,7 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
             const SizedBox(height: 20),
             _CheckRow(
               ok: !q.isBlurry,
-              text: q.isBlurry
-                  ? 'Image is blurry. Hold the phone steady.'
-                  : 'Image is sharp',
+              text: q.isBlurry ? 'Image is blurry. Hold the phone steady.' : 'Image is sharp',
             ),
             _CheckRow(
               ok: !q.isTooDark && !q.isTooBright,
@@ -430,9 +324,7 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
             ),
             _CheckRow(
               ok: !q.hasGlare,
-              text: q.hasGlare
-                  ? 'Glare on the card. Tilt it slightly away from the light.'
-                  : 'No glare',
+              text: q.hasGlare ? 'Glare on the card. Tilt it slightly away from the light.' : 'No glare',
             ),
             if (isFront)
               _CheckRow(
@@ -504,8 +396,7 @@ class _CheckRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        ok ? AppColors.verified : (soft ? AppColors.caution : AppColors.danger);
+    final color = ok ? AppColors.verified : (soft ? AppColors.caution : AppColors.danger);
     final icon = ok ? Icons.check_circle : (soft ? Icons.info : Icons.cancel);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -515,9 +406,7 @@ class _CheckRow extends StatelessWidget {
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(text,
-                style: const TextStyle(
-                    color: AppColors.ink, fontSize: 15, height: 1.35)),
+            child: Text(text, style: const TextStyle(color: AppColors.ink, fontSize: 15, height: 1.35)),
           ),
         ],
       ),

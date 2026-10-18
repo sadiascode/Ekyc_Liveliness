@@ -14,6 +14,7 @@ import '../models/kyc_data.dart';
 import '../services/liveness_engine.dart';
 import '../utils/camera_image_converter.dart';
 import '../widgets/busy_overlay.dart';
+import '../widgets/camera_cover_preview.dart';
 import '../widgets/camera_error_view.dart';
 import '../widgets/overlays.dart';
 
@@ -24,8 +25,7 @@ class LivenessScreen extends StatefulWidget {
   State<LivenessScreen> createState() => _LivenessScreenState();
 }
 
-class _LivenessScreenState extends State<LivenessScreen>
-    with WidgetsBindingObserver {
+class _LivenessScreenState extends State<LivenessScreen> with WidgetsBindingObserver {
   final FaceDetector _detector = FaceDetector(
     options: FaceDetectorOptions(
       enableClassification: true, // eye-open and smile probabilities
@@ -62,8 +62,7 @@ class _LivenessScreenState extends State<LivenessScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
       if (_controller != null) {
         _backgrounded = true;
         _disposeCamera();
@@ -72,8 +71,7 @@ class _LivenessScreenState extends State<LivenessScreen>
     } else if (state == AppLifecycleState.resumed && _backgrounded) {
       _backgrounded = false;
       // Never resume a half-finished session.
-      _restart(
-          notice: 'Verification restarted because the app left the screen.');
+      _restart(notice: 'Verification restarted because the app left the screen.');
     }
   }
 
@@ -92,21 +90,16 @@ class _LivenessScreenState extends State<LivenessScreen>
     _initializing = true;
     try {
       final cameras = await availableCameras();
-      final front = cameras
-          .where((c) => c.lensDirection == CameraLensDirection.front)
-          .firstOrNull;
+      final front = cameras.where((c) => c.lensDirection == CameraLensDirection.front).firstOrNull;
       if (front == null) {
-        if (mounted)
-          setState(() => _error = 'This device has no front camera.');
+        if (mounted) setState(() => _error = 'This device has no front camera.');
         return;
       }
       final c = CameraController(
         front,
         ResolutionPreset.high,
         enableAudio: false,
-        imageFormatGroup: Platform.isAndroid
-            ? ImageFormatGroup.nv21
-            : ImageFormatGroup.bgra8888,
+        imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888,
       );
       await c.initialize();
       if (!mounted) {
@@ -162,21 +155,17 @@ class _LivenessScreenState extends State<LivenessScreen>
       shotPath = shot.path;
 
       // Re-check the actual saved photo, not just the stream frames.
-      final faces =
-          await _detector.processImage(InputImage.fromFilePath(shot.path));
+      final faces = await _detector.processImage(InputImage.fromFilePath(shot.path));
       if (!_isAcceptableSelfie(faces)) {
         await deleteQuietly(shot.path);
         if (mounted) {
-          await _restart(
-              notice:
-                  'The photo was not clear. Keep still, look at the camera, eyes open.');
+          await _restart(notice: 'The photo was not clear. Keep still, look at the camera, eyes open.');
         }
         return;
       }
 
       final dir = await KycStorage.dir();
-      final saved = await File(shot.path).copy(
-          '${dir.path}/selfie_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final saved = await File(shot.path).copy('${dir.path}/selfie_${DateTime.now().millisecondsSinceEpoch}.jpg');
       await deleteQuietly(shot.path);
       if (!mounted) return;
 
@@ -191,9 +180,7 @@ class _LivenessScreenState extends State<LivenessScreen>
       );
     } on CameraException catch (_) {
       if (shotPath != null) await deleteQuietly(shotPath);
-      if (mounted)
-        await _restart(
-            notice: 'The camera could not take the photo. Try again.');
+      if (mounted) await _restart(notice: 'The camera could not take the photo. Try again.');
     }
   }
 
@@ -227,9 +214,7 @@ class _LivenessScreenState extends State<LivenessScreen>
     final issue = u.issue.message;
     return switch (u.stage) {
       LivenessStage.positioning => (
-          u.completed == 0
-              ? 'Look straight at the camera'
-              : 'Good. Now look straight ahead',
+          u.completed == 0 ? 'Look straight at the camera' : 'Good. Now look straight ahead',
           issue ?? _notice,
         ),
       LivenessStage.challenge => (u.challenge!.instruction, issue),
@@ -273,33 +258,18 @@ class _LivenessScreenState extends State<LivenessScreen>
       body: LayoutBuilder(
         builder: (context, box) {
           final size = box.biggest;
-          // Define UI spacing constants
-          final topBarHeight = 80.0;
-          final bottomControlHeight = 100.0;
-          
-          // Calculate available vertical space for the oval
-          final availableHeight = size.height - topBarHeight - bottomControlHeight;
-          
-          // Calculate oval size - responsive to screen width
-          final ovalWidth = math.min(size.width * 0.75, 340.0);
-          final ovalHeight = ovalWidth * 1.32;
-          
-          // Center the oval in the available space
+          final ovalWidth = math.min(size.width * 0.72, 320.0);
           final oval = Rect.fromCenter(
-            center: Offset(size.width / 2, topBarHeight + availableHeight / 2),
+            center: Offset(size.width / 2, size.height * 0.40),
             width: ovalWidth,
-            height: ovalHeight,
+            height: ovalWidth * 1.32,
           );
 
-          return Stack(
-            fit: StackFit.expand,
+          return SizedBox.expand(
+            child: Stack(
             children: [
-              // Full-screen camera preview at the very top
-              // Use CameraPreview directly for front camera to fill screen properly
               if (c != null && c.value.isInitialized)
-                Positioned.fill(child: CameraPreview(c)),
-              
-              // Dark overlay outside the face oval
+                Positioned.fill(child: CameraCoverPreview(controller: c)),
               Positioned.fill(
                 child: CustomPaint(
                   painter: FaceOvalPainter(
@@ -310,51 +280,29 @@ class _LivenessScreenState extends State<LivenessScreen>
                   ),
                 ),
               ),
-              
-              // Top controls: close button and title with SafeArea
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        // Close button with subtle background for visibility
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.close, color: Colors.white, size: 24),
-                            tooltip: 'Close',
-                            padding: const EdgeInsets.all(8),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Live selfie',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2),
-                        ),
-                      ],
-                    ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        tooltip: 'Close',
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Live selfie',
+                        style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              
-              // Instruction text and step indicator below the oval
               Positioned(
-                left: 24,
-                right: 24,
-                top: oval.bottom + 28,
+                left: 28,
+                right: 28,
+                top: oval.bottom + 32,
                 child: Semantics(
                   liveRegion: true,
                   child: Column(
@@ -362,8 +310,7 @@ class _LivenessScreenState extends State<LivenessScreen>
                       if (!failed)
                         Text(
                           'Step ${math.min(completed + 1, total)} of $total',
-                          style: const TextStyle(
-                              color: Colors.white60, fontSize: 14),
+                          style: const TextStyle(color: Colors.white60, fontSize: 14),
                         ),
                       const SizedBox(height: 8),
                       Text(
@@ -392,8 +339,6 @@ class _LivenessScreenState extends State<LivenessScreen>
                   ),
                 ),
               ),
-              
-              // Retry button at bottom when failed
               if (failed)
                 Positioned(
                   left: 20,
@@ -401,18 +346,13 @@ class _LivenessScreenState extends State<LivenessScreen>
                   bottom: 0,
                   child: SafeArea(
                     top: false,
-                    minimum: const EdgeInsets.only(bottom: 24),
-                    child: FilledButton(
-                        onPressed: () => _restart(),
-                        child: const Text('Try again')),
+                    minimum: const EdgeInsets.only(bottom: 20),
+                    child: FilledButton(onPressed: () => _restart(), child: const Text('Try again')),
                   ),
                 ),
-              
-              // Processing overlay when capturing
-              if (_capturing)
-                const Positioned.fill(
-                    child: BusyOverlay(label: 'Checking photo')),
+              if (_capturing) const Positioned.fill(child: BusyOverlay(label: 'Checking photo')),
             ],
+          ),
           );
         },
       ),

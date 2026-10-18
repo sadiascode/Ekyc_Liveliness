@@ -97,8 +97,7 @@ class LivenessEngine {
   int? get trackingId => _trackingId;
 
   LivenessUpdate process(List<Face> faces, Size uprightImageSize) {
-    if (_stage == LivenessStage.failed ||
-        _stage == LivenessStage.readyToCapture) {
+    if (_stage == LivenessStage.failed || _stage == LivenessStage.readyToCapture) {
       return _update();
     }
 
@@ -135,8 +134,7 @@ class LivenessEngine {
     final smile = face.smilingProbability ?? 0;
     final neutral = yaw.abs() < _neutralYawDeg && roll.abs() < _neutralRollDeg;
     final eyesOpen = l != null && r != null && l > _eyesOpen && r > _eyesOpen;
-    final eyesClosed =
-        l != null && r != null && l < _eyesClosed && r < _eyesClosed;
+    final eyesClosed = l != null && r != null && l < _eyesClosed && r < _eyesClosed;
 
     switch (_stage) {
       case LivenessStage.positioning:
@@ -221,8 +219,7 @@ class LivenessEngine {
     return _update();
   }
 
-  LivenessUpdate _update(
-      {FaceIssue issue = FaceIssue.none, bool justPassed = false}) {
+  LivenessUpdate _update({FaceIssue issue = FaceIssue.none, bool justPassed = false}) {
     return LivenessUpdate(
       stage: _stage,
       issue: issue,
