@@ -16,7 +16,7 @@ class EkycApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Customer eKYC',
+      title: 'Ekyc',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: const KycHomeScreen(),
