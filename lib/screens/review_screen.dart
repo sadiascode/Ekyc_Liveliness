@@ -195,6 +195,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
               ),
               const SizedBox(height: 12),
               TextFormField(
+                controller: _banglaName,
+                decoration: const InputDecoration(labelText: 'Father Name'),
+                validator: (v) => (v?.trim().length ?? 0) >= 3
+                    ? null
+                    : 'Enter the father name',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _banglaName,
+                decoration: const InputDecoration(labelText: 'Mother Name'),
+                validator: (v) => (v?.trim().length ?? 0) >= 3
+                    ? null
+                    : 'Enter the mother name',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
                 controller: _dob,
                 keyboardType: TextInputType.datetime,
                 decoration: const InputDecoration(
