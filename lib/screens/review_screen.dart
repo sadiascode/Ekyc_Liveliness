@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/app_config.dart';
 import '../core/kyc_storage.dart';
@@ -19,9 +20,14 @@ class ReviewScreen extends StatefulWidget {
 
 class _ReviewScreenState extends State<ReviewScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final _nid = TextEditingController(text: widget.data.front?.ocr?.nidNumber ?? '');
-  late final _dob = TextEditingController(text: widget.data.front?.ocr?.dateOfBirth ?? '');
-  late final _name = TextEditingController(text: widget.data.front?.ocr?.name ?? '');
+  late final _nid =
+      TextEditingController(text: widget.data.front?.ocr?.nidNumber ?? '');
+  late final _dob =
+      TextEditingController(text: widget.data.front?.ocr?.dateOfBirth ?? '');
+  late final _banglaName =
+      TextEditingController(text: widget.data.front?.ocr?.banglaName ?? '');
+  late final _englishName =
+      TextEditingController(text: widget.data.front?.ocr?.englishName ?? '');
   late final _bloodGroup = TextEditingController(
     text: widget.data.back?.ocr?.bloodGroup ?? 'Not detected',
   );
@@ -30,10 +36,27 @@ class _ReviewScreenState extends State<ReviewScreen> {
   bool _submitting = false;
 
   @override
+  void initState() {
+    super.initState();
+    if (kDebugMode) {
+      debugPrint('=== ReviewScreen Init ===');
+      debugPrint('Front OCR data: ${widget.data.front?.ocr}');
+      debugPrint('Bangla name from OCR: ${widget.data.front?.ocr?.banglaName}');
+      debugPrint(
+          'English name from OCR: ${widget.data.front?.ocr?.englishName}');
+      debugPrint('NID number from OCR: ${widget.data.front?.ocr?.nidNumber}');
+      debugPrint('Bangla Name controller initial value: "${_banglaName.text}"');
+      debugPrint(
+          'English Name controller initial value: "${_englishName.text}"');
+    }
+  }
+
+  @override
   void dispose() {
     _nid.dispose();
     _dob.dispose();
-    _name.dispose();
+    _banglaName.dispose();
+    _englishName.dispose();
     _bloodGroup.dispose();
     _mobile.dispose();
     super.dispose();
@@ -48,15 +71,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
     setState(() => _submitting = true);
     try {
+      final fields = {
+        'nid_number': _nid.text.trim(),
+        'date_of_birth': _dob.text.trim(),
+        'full_name': _englishName.text.trim(),
+        'mobile': _mobile.text.trim(),
+        'consent': 'true',
+      };
+
+      // Include Bangla name if available and not empty
+      if (_banglaName.text.trim().isNotEmpty) {
+        fields['bangla_name'] = _banglaName.text.trim();
+      }
+
       final reference = await KycApiService().submit(
         widget.data,
-        fields: {
-          'nid_number': _nid.text.trim(),
-          'date_of_birth': _dob.text.trim(),
-          'full_name': _name.text.trim(),
-          'mobile': _mobile.text.trim(),
-          'consent': 'true',
-        },
+        fields: fields,
       );
       await KycStorage.wipe();
       if (!mounted) return;
@@ -69,7 +99,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
             'Reference $reference${AppConfig.isDemo ? ' (demo mode, nothing was sent)' : ''}.',
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Done')),
           ],
         ),
       );
@@ -85,7 +117,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -102,22 +135,28 @@ class _ReviewScreenState extends State<ReviewScreen> {
             children: [
               Row(
                 children: [
-                  Expanded(child: _Thumb(file: d.front!.image, label: 'NID front')),
+                  Expanded(
+                      child: _Thumb(file: d.front!.image, label: 'NID front')),
                   const SizedBox(width: 10),
-                  Expanded(child: _Thumb(file: d.back!.image, label: 'NID back')),
+                  Expanded(
+                      child: _Thumb(file: d.back!.image, label: 'NID back')),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   ClipOval(
-                    child: Image.file(d.liveness!.selfie, width: 64, height: 64, fit: BoxFit.cover),
+                    child: Image.file(d.liveness!.selfie,
+                        width: 64, height: 64, fit: BoxFit.cover),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
                       'Live selfie: ${d.liveness!.challenges.length} prompts passed',
-                      style: const TextStyle(color: AppColors.verified, fontSize: 15, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                          color: AppColors.verified,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500),
                     ),
                   ),
                 ],
@@ -132,25 +171,38 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 controller: _nid,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'NID number'),
-                validator: (v) => RegExp(r'^(\d{10}|\d{13}|\d{17})$').hasMatch(v?.trim() ?? '')
+                validator: (v) => RegExp(r'^(\d{10}|\d{13}|\d{17})$')
+                        .hasMatch(v?.trim() ?? '')
                     ? null
                     : 'Enter a 10, 13 or 17-digit NID number',
               ),
               const SizedBox(height: 12),
               TextFormField(
-                controller: _name,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(labelText: 'Name as on the card'),
-                validator: (v) => (v?.trim().length ?? 0) >= 3 ? null : 'Enter the full name',
+                controller: _banglaName,
+                decoration: const InputDecoration(labelText: 'Bangla Name'),
+                validator: (v) => (v?.trim().length ?? 0) >= 3
+                    ? null
+                    : 'Enter the Bangla name',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _englishName,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'English Name'),
+                validator: (v) => (v?.trim().length ?? 0) >= 3
+                    ? null
+                    : 'Enter the English name',
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _dob,
                 keyboardType: TextInputType.datetime,
-                decoration: const InputDecoration(labelText: 'Date of birth', hintText: 'YYYY-MM-DD'),
+                decoration: const InputDecoration(
+                    labelText: 'Date of birth', hintText: 'YYYY-MM-DD'),
                 validator: (v) {
                   final s = v?.trim() ?? '';
-                  final ok = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(s) && DateTime.tryParse(s) != null;
+                  final ok = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(s) &&
+                      DateTime.tryParse(s) != null;
                   return ok ? null : 'Use the format YYYY-MM-DD';
                 },
               ),
@@ -164,10 +216,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
               TextFormField(
                 controller: _mobile,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Mobile number', hintText: '01XXXXXXXXX'),
-                validator: (v) => RegExp(r'^01[3-9]\d{8}$').hasMatch(v?.trim() ?? '')
-                    ? null
-                    : 'Enter an 11-digit Bangladeshi mobile number',
+                decoration: const InputDecoration(
+                    labelText: 'Mobile number', hintText: '01XXXXXXXXX'),
+                validator: (v) =>
+                    RegExp(r'^01[3-9]\d{8}$').hasMatch(v?.trim() ?? '')
+                        ? null
+                        : 'Enter an 11-digit Bangladeshi mobile number',
               ),
               const SizedBox(height: 16),
               CheckboxListTile(
@@ -177,7 +231,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 controlAffinity: ListTileControlAffinity.leading,
                 title: const Text(
                   'The customer agrees to the collection of their NID and photo for identity verification.',
-                  style: TextStyle(fontSize: 14, color: AppColors.ink, height: 1.35),
+                  style: TextStyle(
+                      fontSize: 14, color: AppColors.ink, height: 1.35),
                 ),
               ),
             ],
@@ -192,7 +247,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
               ? const SizedBox(
                   width: 22,
                   height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.5, color: Colors.white),
                 )
               : const Text('Submit verification'),
         ),
@@ -220,7 +276,8 @@ class _Thumb extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text(label, style: const TextStyle(color: AppColors.inkMuted, fontSize: 13)),
+        Text(label,
+            style: const TextStyle(color: AppColors.inkMuted, fontSize: 13)),
       ],
     );
   }
