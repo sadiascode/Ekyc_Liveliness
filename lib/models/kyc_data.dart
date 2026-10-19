@@ -32,6 +32,8 @@ class NidOcrData {
     this.name,
     this.banglaName,
     this.englishName,
+    this.banglaFatherName,
+    this.banglaMotherName,
     this.bloodGroup,
     this.looksLikeNidFront = false,
   });
@@ -42,6 +44,8 @@ class NidOcrData {
   final String? name; // Legacy field, kept for backward compatibility
   final String? banglaName; // Name in Bengali script
   final String? englishName; // Name in English script
+  final String? banglaFatherName; // Father's name in Bengali script
+  final String? banglaMotherName; // Mother's name in Bengali script
   final String? bloodGroup;
   final bool looksLikeNidFront;
 }

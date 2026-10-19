@@ -189,6 +189,8 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
         debugPrint('NID number: ${ocr.nidNumber}');
         debugPrint('English name: ${ocr.englishName}');
         debugPrint('Bangla name: ${ocr.banglaName}');
+        debugPrint('Bangla father name: ${ocr.banglaFatherName}');
+        debugPrint('Bangla mother name: ${ocr.banglaMotherName}');
         debugPrint('Date of birth: ${ocr.dateOfBirth}');
         if (widget.side == NidSide.back) {
           debugPrint('Back-side OCR - Blood group detected: ${ocr.bloodGroup}');

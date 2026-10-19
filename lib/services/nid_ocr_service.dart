@@ -138,11 +138,23 @@ class NidOcrService {
     final englishName = _extractName(lines);
     final banglaName =
         bengaliText != null ? _extractBanglaName(bengaliText) : null;
+    final banglaFatherName = bengaliText != null
+        ? _extractBengaliParentName(bengaliText, 'পিতা')
+        : null;
+    final banglaMotherName = bengaliText != null
+        ? _extractBengaliParentName(bengaliText, 'মাতা')
+        : null;
 
     if (kDebugMode) {
       debugPrint('English name extracted: $englishName');
       debugPrint('Bangla name extracted: $banglaName');
+      debugPrint('Bangla father name extracted: $banglaFatherName');
+      debugPrint('Bangla mother name extracted: $banglaMotherName');
       debugPrint('[NID OCR] Final Bangla name in parse(): $banglaName');
+      debugPrint(
+          '[NID OCR] Final Bangla father name in parse(): $banglaFatherName');
+      debugPrint(
+          '[NID OCR] Final Bangla mother name in parse(): $banglaMotherName');
     }
 
     return NidOcrData(
@@ -152,6 +164,8 @@ class NidOcrService {
       name: englishName, // Legacy field, kept for backward compatibility
       banglaName: banglaName,
       englishName: englishName,
+      banglaFatherName: banglaFatherName,
+      banglaMotherName: banglaMotherName,
       bloodGroup: _extractBloodGroup(latinText),
       looksLikeNidFront: nid != null ||
           upper.contains('NATIONAL ID') ||
@@ -426,8 +440,6 @@ class NidOcrService {
       RegExp(r'[\u09A4\u09BE\u09B0\u09BF\u0996]'), // তারিখ
       RegExp(r'[\u09B0\u0995\u09CD\u09A4]'), // রক্ত
       RegExp(r'[\u0997\u09CD\u09B0\u09C1\u09AA]'), // গ্রুপ
-      RegExp(r'[\u09AA\u09BF\u09A4\u09BE]'), // পিতা
-      RegExp(r'[\u09AE\u09BE\u09A4\u09BE]'), // মাতা
       RegExp(r'[\u09B8\u09CD\u09AC\u09BE\u0995\u09CD\u09B7\u09BE]'), // স্বাক্ষর
     ];
 
@@ -513,6 +525,188 @@ class NidOcrService {
     if (kDebugMode) {
       debugPrint('✗ No valid Bangla name found in OCR output');
       debugPrint('[NID OCR] Extracted Bangla name: null');
+    }
+    return null;
+  }
+
+  static String? _extractBengaliParentName(String bengaliText, String label) {
+    if (kDebugMode) {
+      debugPrint('=== Extracting Bangla Parent Name ===');
+      debugPrint('Label: $label');
+      debugPrint('Input text length: ${bengaliText.length}');
+    }
+
+    if (bengaliText.trim().isEmpty) {
+      if (kDebugMode) {
+        debugPrint('Bengali text is empty, returning null');
+      }
+      return null;
+    }
+
+    final lines = bengaliText
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+
+    if (kDebugMode) {
+      debugPrint('Total lines after split: ${lines.length}');
+      for (var i = 0; i < lines.length; i++) {
+        debugPrint('Line $i: "${lines[i]}" (length: ${lines[i].length})');
+      }
+    }
+
+    // Bengali Unicode ranges including vowel signs
+    final bengaliLetterWithSignsRegex = RegExp(r'[\u0980-\u09DF]+');
+    final bengaliDigitRegex = RegExp(r'[\u09E6-\u09EF]');
+    final englishDigitRegex = RegExp(r'[0-9]');
+    final latinLetterRegex = RegExp(r'[a-zA-Z]');
+
+    // Helper function to validate a name candidate
+    bool isValidName(String text) {
+      if (text.trim().isEmpty) return false;
+
+      final nonBengaliContent =
+          text.replaceAll(RegExp(r'[\u0980-\u09DF\s]'), '');
+      if (nonBengaliContent.isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint(
+              '  Invalid: contains non-Bengali content: "$nonBengaliContent"');
+        }
+        return false;
+      }
+
+      if (bengaliDigitRegex.hasMatch(text)) {
+        if (kDebugMode) {
+          debugPrint('  Invalid: contains Bengali digits');
+        }
+        return false;
+      }
+
+      if (englishDigitRegex.hasMatch(text)) {
+        if (kDebugMode) {
+          debugPrint('  Invalid: contains English digits');
+        }
+        return false;
+      }
+
+      if (latinLetterRegex.hasMatch(text)) {
+        if (kDebugMode) {
+          debugPrint('  Invalid: contains Latin letters');
+        }
+        return false;
+      }
+
+      final letterMatches = bengaliLetterWithSignsRegex.allMatches(text);
+      final letterCount =
+          letterMatches.fold(0, (sum, m) => sum + m.group(0)!.length);
+
+      if (letterCount < 2) {
+        if (kDebugMode) {
+          debugPrint(
+              '  Invalid: insufficient Bengali characters ($letterCount)');
+        }
+        return false;
+      }
+
+      if (kDebugMode) {
+        debugPrint('  Valid: $letterCount Bengali characters');
+      }
+      return true;
+    }
+
+    // Helper function to clean and normalize a name
+    String cleanName(String text) {
+      var cleaned = text.replaceAll(RegExp(r'[^\u0980-\u09DF\s]'), '').trim();
+      cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ');
+      return cleaned;
+    }
+
+    // Look for the label and extract nearby text
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+
+      if (line.contains(label)) {
+        if (kDebugMode) {
+          debugPrint('Found "$label" at line $i: "$line"');
+        }
+
+        List<String> candidates = [];
+
+        // Method 1: Extract after colon (:)
+        final colonIndex = line.indexOf(':');
+        if (colonIndex >= 0 && colonIndex + 1 < line.length) {
+          final afterColon = line.substring(colonIndex + 1).trim();
+          if (afterColon.isNotEmpty) {
+            candidates.add(afterColon);
+            if (kDebugMode) {
+              debugPrint('  Candidate after colon: "$afterColon"');
+            }
+          }
+        }
+
+        // Method 2: Extract after Bengali colon (ঃ)
+        final bengaliColonIndex = line.indexOf('ঃ');
+        if (bengaliColonIndex >= 0 && bengaliColonIndex + 1 < line.length) {
+          final afterBengaliColon =
+              line.substring(bengaliColonIndex + 1).trim();
+          if (afterBengaliColon.isNotEmpty) {
+            candidates.add(afterBengaliColon);
+            if (kDebugMode) {
+              debugPrint('  Candidate after ঃ: "$afterBengaliColon"');
+            }
+          }
+        }
+
+        // Method 3: Extract after label (assuming space or no separator)
+        final labelIndex = line.indexOf(label);
+        if (labelIndex >= 0 && labelIndex + label.length < line.length) {
+          final afterLabel = line.substring(labelIndex + label.length).trim();
+          if (afterLabel.isNotEmpty) {
+            candidates.add(afterLabel);
+            if (kDebugMode) {
+              debugPrint('  Candidate after $label: "$afterLabel"');
+            }
+          }
+        }
+
+        // Method 4: Use next line if current line only has label
+        if (i + 1 < lines.length) {
+          final nextLine = lines[i + 1].trim();
+          if (nextLine.isNotEmpty) {
+            candidates.add(nextLine);
+            if (kDebugMode) {
+              debugPrint('  Candidate from next line: "$nextLine"');
+            }
+          }
+        }
+
+        // Validate and clean candidates
+        for (final candidate in candidates) {
+          final cleaned = cleanName(candidate);
+          if (kDebugMode) {
+            debugPrint(
+                '  Validating candidate: "$candidate" -> cleaned: "$cleaned"');
+          }
+
+          if (isValidName(cleaned)) {
+            if (kDebugMode) {
+              debugPrint('✓ Valid $label name found: "$cleaned"');
+              debugPrint('[NID OCR] Extracted Bangla $label name: $cleaned');
+            }
+            return cleaned;
+          }
+        }
+
+        if (kDebugMode) {
+          debugPrint('Label found but no valid name extracted');
+        }
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint('✗ No valid Bangla $label name found in OCR output');
+      debugPrint('[NID OCR] Extracted Bangla $label name: null');
     }
     return null;
   }

@@ -28,6 +28,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
       TextEditingController(text: widget.data.front?.ocr?.banglaName ?? '');
   late final _englishName =
       TextEditingController(text: widget.data.front?.ocr?.englishName ?? '');
+  late final _banglaFatherName = TextEditingController(
+      text: widget.data.front?.ocr?.banglaFatherName ?? '');
+  late final _banglaMotherName = TextEditingController(
+      text: widget.data.front?.ocr?.banglaMotherName ?? '');
   late final _bloodGroup = TextEditingController(
     text: widget.data.back?.ocr?.bloodGroup ?? 'Not detected',
   );
@@ -44,10 +48,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
       debugPrint('Bangla name from OCR: ${widget.data.front?.ocr?.banglaName}');
       debugPrint(
           'English name from OCR: ${widget.data.front?.ocr?.englishName}');
+      debugPrint(
+          'Bangla father name from OCR: ${widget.data.front?.ocr?.banglaFatherName}');
+      debugPrint(
+          'Bangla mother name from OCR: ${widget.data.front?.ocr?.banglaMotherName}');
       debugPrint('NID number from OCR: ${widget.data.front?.ocr?.nidNumber}');
       debugPrint('Bangla Name controller initial value: "${_banglaName.text}"');
       debugPrint(
           'English Name controller initial value: "${_englishName.text}"');
+      debugPrint(
+          'Bangla Father Name controller initial value: "${_banglaFatherName.text}"');
+      debugPrint(
+          'Bangla Mother Name controller initial value: "${_banglaMotherName.text}"');
     }
   }
 
@@ -57,6 +69,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
     _dob.dispose();
     _banglaName.dispose();
     _englishName.dispose();
+    _banglaFatherName.dispose();
+    _banglaMotherName.dispose();
     _bloodGroup.dispose();
     _mobile.dispose();
     super.dispose();
@@ -82,6 +96,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
       // Include Bangla name if available and not empty
       if (_banglaName.text.trim().isNotEmpty) {
         fields['bangla_name'] = _banglaName.text.trim();
+      }
+
+      // Include Bangla father name if available and not empty
+      if (_banglaFatherName.text.trim().isNotEmpty) {
+        fields['bangla_father_name'] = _banglaFatherName.text.trim();
+      }
+
+      // Include Bangla mother name if available and not empty
+      if (_banglaMotherName.text.trim().isNotEmpty) {
+        fields['bangla_mother_name'] = _banglaMotherName.text.trim();
       }
 
       final reference = await KycApiService().submit(
@@ -195,19 +219,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
               ),
               const SizedBox(height: 12),
               TextFormField(
-                controller: _banglaName,
-                decoration: const InputDecoration(labelText: 'Father Name'),
-                validator: (v) => (v?.trim().length ?? 0) >= 3
-                    ? null
-                    : 'Enter the father name',
+                controller: _banglaFatherName,
+                decoration:
+                    const InputDecoration(labelText: 'Bangla Father Name'),
               ),
               const SizedBox(height: 12),
               TextFormField(
-                controller: _banglaName,
-                decoration: const InputDecoration(labelText: 'Mother Name'),
-                validator: (v) => (v?.trim().length ?? 0) >= 3
-                    ? null
-                    : 'Enter the mother name',
+                controller: _banglaMotherName,
+                decoration:
+                    const InputDecoration(labelText: 'Bangla Mother Name'),
               ),
               const SizedBox(height: 12),
               TextFormField(
