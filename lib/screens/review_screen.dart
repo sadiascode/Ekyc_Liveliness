@@ -221,13 +221,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
               TextFormField(
                 controller: _banglaFatherName,
                 decoration:
-                    const InputDecoration(labelText: 'Bangla Father Name'),
+                    const InputDecoration(labelText: 'Father Name'),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _banglaMotherName,
                 decoration:
-                    const InputDecoration(labelText: 'Bangla Mother Name'),
+                    const InputDecoration(labelText: 'Mother Name'),
               ),
               const SizedBox(height: 12),
               TextFormField(
