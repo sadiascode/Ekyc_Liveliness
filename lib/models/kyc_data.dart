@@ -34,6 +34,8 @@ class NidOcrData {
     this.englishName,
     this.banglaFatherName,
     this.banglaMotherName,
+    this.address,
+    this.postOffice,
     this.bloodGroup,
     this.looksLikeNidFront = false,
   });
@@ -46,6 +48,8 @@ class NidOcrData {
   final String? englishName; // Name in English script
   final String? banglaFatherName; // Father's name in Bengali script
   final String? banglaMotherName; // Mother's name in Bengali script
+  final String? address; // Address in Bengali script
+  final String? postOffice; // Post Office in Bengali script
   final String? bloodGroup;
   final bool looksLikeNidFront;
 }

@@ -134,4 +134,105 @@ void main() {
       expect(result.banglaFatherName, isNull);
     });
   });
+
+  group('Address and Post Office Extraction Tests', () {
+    test('Extract address from গ্রাম label with colon', () {
+      final input = 'গ্রাম: সুন্দরপুর, উপজেলা: সদর, জেলা: ঢাকা';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      // Value is on same line, only extract after colon
+      expect(result.address, 'সুন্দরপুর, উপজেলা: সদর, জেলা: ঢাকা');
+    });
+
+    test('Extract address from গ্রাম label with Bengali colon', () {
+      final input = 'গ্রামঃ সুন্দরপুর, উপজেলা: সদর, জেলা: ঢাকা';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.address, 'সুন্দরপুর, উপজেলা: সদর, জেলা: ঢাকা');
+    });
+
+    test('Extract address from রাস্তা label', () {
+      final input = 'রাস্তা: বাসস্ট্যান্ড রোড, উপজেলা: সদর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.address, 'বাসস্ট্যান্ড রোড, উপজেলা: সদর');
+    });
+
+    test('Extract address from next line after গ্রাম', () {
+      final input = 'গ্রাম\nসুন্দরপুর, উপজেলা: সদর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.address, 'সুন্দরপুর, উপজেলা: সদর');
+    });
+
+    test('Extract multiline address', () {
+      final input =
+          'গ্রাম: সুন্দরপুর\nউপজেলা: সদর\nজেলা: ঢাকা\nডাকঘর: সদর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      // When value is on same line as label, collect from next lines until ডাকঘর
+      expect(result.address, 'সুন্দরপুর উপজেলা: সদর জেলা: ঢাকা');
+    });
+
+    test('Extract post office from label with colon', () {
+      final input = 'ডাকঘর: সদর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.postOffice, 'সদর');
+    });
+
+    test('Extract post office from label with Bengali colon', () {
+      final input = 'ডাকঘরঃ সদর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.postOffice, 'সদর');
+    });
+
+    test('Extract post office from next line', () {
+      final input = 'ডাকঘর\nসদর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      // When value is from next line, collect from subsequent lines
+      expect(result.postOffice, 'সদর');
+    });
+
+    test('Extract post office with post code', () {
+      final input = 'ডাকঘর: সদর, ১২৩৪';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.postOffice, 'সদর, ১২৩৪');
+    });
+
+    test('Extract both address and post office', () {
+      final input =
+          'গ্রাম: সুন্দরপুর, উপজেলা: সদর, জেলা: ঢাকা\nডাকঘর: সদর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      // Address is on same line as label
+      expect(result.address, 'সুন্দরপুর, উপজেলা: সদর, জেলা: ঢাকা');
+      expect(result.postOffice, 'সদর');
+    });
+
+    test('Return null when গ্রাম/রাস্তা label not found', () {
+      final input = 'ডাকঘর: সদর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.address, isNull);
+    });
+
+    test('Return null when ডাকঘর label not found', () {
+      final input = 'গ্রাম: সুন্দরপুর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.postOffice, isNull);
+    });
+
+    test('Handle missing address label gracefully', () {
+      final input = 'উপজেলা: সদর\nজেলা: ঢাকা';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.address, isNull);
+    });
+
+    test('Handle extra spaces in address', () {
+      final input = 'গ্রাম:  সুন্দরপুর,  উপজেলা:  সদর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.address, 'সুন্দরপুর, উপজেলা: সদর');
+    });
+
+    test('Regression test: Extract address until ডাকঘর, post office until end', () {
+      final input = 'গ্রাম/রাস্তা: ফুলবাড়ী দক্ষিনপাড়া, ফুলবাড়ি উত্তর, মধ্য, দক্ষিণ, ডাকঘর: কাজির চর - ২১০০, শ্রীবরদী, শেরপুর';
+      final result = NidOcrService.parseBack('', bengaliText: input);
+      expect(result.address, 'ফুলবাড়ী দক্ষিনপাড়া, ফুলবাড়ি উত্তর, মধ্য, দক্ষিণ');
+      // Post office extracts from ডাকঘর: onwards until location field
+      expect(result.postOffice, 'কাজির চর - ২১০০, শ্রীবরদী, শেরপুর');
+    });
+  });
 }

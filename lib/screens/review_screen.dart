@@ -32,6 +32,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
       text: widget.data.front?.ocr?.banglaFatherName ?? '');
   late final _banglaMotherName = TextEditingController(
       text: widget.data.front?.ocr?.banglaMotherName ?? '');
+  late final _address =
+      TextEditingController(text: widget.data.back?.ocr?.address ?? '');
+  late final _postOffice =
+      TextEditingController(text: widget.data.back?.ocr?.postOffice ?? '');
   late final _bloodGroup = TextEditingController(
     text: widget.data.back?.ocr?.bloodGroup ?? 'Not detected',
   );
@@ -45,21 +49,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
     if (kDebugMode) {
       debugPrint('=== ReviewScreen Init ===');
       debugPrint('Front OCR data: ${widget.data.front?.ocr}');
+      debugPrint('Back OCR data: ${widget.data.back?.ocr}');
       debugPrint('Bangla name from OCR: ${widget.data.front?.ocr?.banglaName}');
       debugPrint(
           'English name from OCR: ${widget.data.front?.ocr?.englishName}');
       debugPrint(
           'Bangla father name from OCR: ${widget.data.front?.ocr?.banglaFatherName}');
-      debugPrint(
-          'Bangla mother name from OCR: ${widget.data.front?.ocr?.banglaMotherName}');
+      debugPrint('Address from OCR: ${widget.data.back?.ocr?.address}');
+      debugPrint('Post office from OCR: ${widget.data.back?.ocr?.postOffice}');
       debugPrint('NID number from OCR: ${widget.data.front?.ocr?.nidNumber}');
       debugPrint('Bangla Name controller initial value: "${_banglaName.text}"');
       debugPrint(
           'English Name controller initial value: "${_englishName.text}"');
       debugPrint(
           'Bangla Father Name controller initial value: "${_banglaFatherName.text}"');
-      debugPrint(
-          'Bangla Mother Name controller initial value: "${_banglaMotherName.text}"');
+      debugPrint('Address controller initial value: "${_address.text}"');
+      debugPrint('Post office controller initial value: "${_postOffice.text}"');
     }
   }
 
@@ -70,7 +75,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
     _banglaName.dispose();
     _englishName.dispose();
     _banglaFatherName.dispose();
-    _banglaMotherName.dispose();
+    _address.dispose();
+    _postOffice.dispose();
     _bloodGroup.dispose();
     _mobile.dispose();
     super.dispose();
@@ -103,9 +109,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
         fields['bangla_father_name'] = _banglaFatherName.text.trim();
       }
 
-      // Include Bangla mother name if available and not empty
-      if (_banglaMotherName.text.trim().isNotEmpty) {
-        fields['bangla_mother_name'] = _banglaMotherName.text.trim();
+      // Include address if available and not empty
+      if (_address.text.trim().isNotEmpty) {
+        fields['address'] = _address.text.trim();
+      }
+
+      // Include post office if available and not empty
+      if (_postOffice.text.trim().isNotEmpty) {
+        fields['post_office'] = _postOffice.text.trim();
       }
 
       final reference = await KycApiService().submit(
@@ -220,14 +231,22 @@ class _ReviewScreenState extends State<ReviewScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _banglaFatherName,
-                decoration:
-                    const InputDecoration(labelText: 'Father Name'),
+                decoration: const InputDecoration(labelText: 'Father Name'),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _banglaMotherName,
-                decoration:
-                    const InputDecoration(labelText: 'Mother Name'),
+                decoration: const InputDecoration(labelText: 'Mother Name'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _address,
+                decoration: const InputDecoration(labelText: 'Address'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _postOffice,
+                decoration: const InputDecoration(labelText: 'Post Office'),
               ),
               const SizedBox(height: 12),
               TextFormField(

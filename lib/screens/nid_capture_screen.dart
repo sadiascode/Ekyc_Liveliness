@@ -181,7 +181,9 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
           '${dir.path}/nid_${widget.side.name}_${DateTime.now().millisecondsSinceEpoch}.jpg');
       await file.writeAsBytes(processed.jpg, flush: true);
 
-      final ocr = await _ocr.readFront(file.path);
+      final ocr = widget.side == NidSide.front
+          ? await _ocr.readFront(file.path)
+          : await _ocr.readBack(file.path);
 
       if (kDebugMode) {
         debugPrint('=== NID Capture Screen OCR Complete ===');
@@ -191,6 +193,8 @@ class _NidCaptureScreenState extends State<NidCaptureScreen>
         debugPrint('Bangla name: ${ocr.banglaName}');
         debugPrint('Bangla father name: ${ocr.banglaFatherName}');
         debugPrint('Bangla mother name: ${ocr.banglaMotherName}');
+        debugPrint('Address: ${ocr.address}');
+        debugPrint('Post office: ${ocr.postOffice}');
         debugPrint('Date of birth: ${ocr.dateOfBirth}');
         if (widget.side == NidSide.back) {
           debugPrint('Back-side OCR - Blood group detected: ${ocr.bloodGroup}');

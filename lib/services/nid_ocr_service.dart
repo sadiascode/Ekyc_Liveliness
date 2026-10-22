@@ -40,71 +40,33 @@ class NidOcrService {
     }
 
     try {
+      // Run both OCR operations in parallel to reduce total time
       if (kDebugMode) {
-        debugPrint('Running Google ML Kit Latin OCR...');
+        debugPrint(
+            'Running Google ML Kit Latin OCR and Tesseract Bengali OCR in parallel...');
       }
-      final latinResult =
-          await _latinRecognizer.processImage(InputImage.fromFilePath(path));
+
+      final results = await Future.wait([
+        // Google ML Kit Latin OCR
+        _latinRecognizer.processImage(InputImage.fromFilePath(path)),
+        // Tesseract Bengali OCR
+        _runBengaliOcr(path),
+      ]);
+
+      final latinResult = results[0] as RecognizedText;
+      final bengaliText = results[1] as String?;
+
       if (kDebugMode) {
         debugPrint('Latin OCR result: ${latinResult.text.length} characters');
         debugPrint('Latin OCR text: ${latinResult.text}');
-      }
-
-      String? bengaliText;
-
-      try {
-        if (kDebugMode) {
-          debugPrint('Running Tesseract Bengali OCR...');
-        }
-        // First try to run Tesseract with both English and Bengali
-        // This helps with initialization and fallback
-        bengaliText = await FlutterTesseractOcr.extractText(
-          path,
-          language: 'ben+eng',
-          args: {
-            "psm": "6", // Assume a single uniform block of text
-            "preserve_interword_spaces": "1",
-          },
-        );
-        if (kDebugMode) {
-          debugPrint('Bengali OCR SUCCESS');
+        if (bengaliText != null) {
           debugPrint(
               'Bengali OCR result length: ${bengaliText.length} characters');
           debugPrint('=== RAW BENGALI OCR TEXT START ===');
           debugPrint(bengaliText);
           debugPrint('=== RAW BENGALI OCR TEXT END ===');
-        }
-      } catch (e, stackTrace) {
-        if (kDebugMode) {
-          debugPrint('Bengali OCR failed: $e');
-          debugPrint('Stack trace: $stackTrace');
-        }
-        // Try with just Bengali if combined fails
-        try {
-          if (kDebugMode) {
-            debugPrint('Retrying with Bengali only...');
-          }
-          bengaliText = await FlutterTesseractOcr.extractText(
-            path,
-            language: 'ben',
-            args: {
-              "psm": "6",
-              "preserve_interword_spaces": "1",
-            },
-          );
-          if (kDebugMode) {
-            debugPrint('Bengali-only OCR SUCCESS');
-            debugPrint(
-                'Bengali-only OCR result length: ${bengaliText.length} characters');
-            debugPrint('=== RAW BENGALI-ONLY OCR TEXT START ===');
-            debugPrint(bengaliText);
-            debugPrint('=== RAW BENGALI-ONLY OCR TEXT END ===');
-          }
-        } catch (e2, stackTrace2) {
-          if (kDebugMode) {
-            debugPrint('Bengali-only OCR also failed: $e2');
-            debugPrint('Stack trace: $stackTrace2');
-          }
+        } else {
+          debugPrint('Bengali OCR returned null');
         }
       }
 
@@ -118,7 +80,117 @@ class NidOcrService {
     }
   }
 
+  /// Runs Tesseract Bengali OCR with fallback logic
+  Future<String?> _runBengaliOcr(String path) async {
+    try {
+      if (kDebugMode) {
+        debugPrint('Running Tesseract Bengali OCR...');
+      }
+      // First try to run Tesseract with both English and Bengali
+      // This helps with initialization and fallback
+      var bengaliText = await FlutterTesseractOcr.extractText(
+        path,
+        language: 'ben+eng',
+        args: {
+          "psm": "6", // Assume a single uniform block of text
+          "preserve_interword_spaces": "1",
+        },
+      );
+      if (kDebugMode) {
+        debugPrint('Bengali OCR SUCCESS');
+        debugPrint(
+            'Bengali OCR result length: ${bengaliText.length} characters');
+        debugPrint('=== RAW BENGALI OCR TEXT START ===');
+        debugPrint(bengaliText);
+        debugPrint('=== RAW BENGALI OCR TEXT END ===');
+      }
+      return bengaliText;
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Bengali OCR failed: $e');
+        debugPrint('Stack trace: $stackTrace');
+      }
+      // Try with just Bengali if combined fails
+      try {
+        if (kDebugMode) {
+          debugPrint('Retrying with Bengali only...');
+        }
+        final bengaliText = await FlutterTesseractOcr.extractText(
+          path,
+          language: 'ben',
+          args: {
+            "psm": "6",
+            "preserve_interword_spaces": "1",
+          },
+        );
+        if (kDebugMode) {
+          debugPrint('Bengali-only OCR SUCCESS');
+          debugPrint(
+              'Bengali-only OCR result length: ${bengaliText.length} characters');
+          debugPrint('=== RAW BENGALI-ONLY OCR TEXT START ===');
+          debugPrint(bengaliText);
+          debugPrint('=== RAW BENGALI-ONLY OCR TEXT END ===');
+        }
+        return bengaliText;
+      } catch (e2, stackTrace2) {
+        if (kDebugMode) {
+          debugPrint('Bengali-only OCR also failed: $e2');
+          debugPrint('Stack trace: $stackTrace2');
+        }
+        return null;
+      }
+    }
+  }
+
   Future<void> close() => _latinRecognizer.close();
+
+  /// Reads NID back with both English and Bengali OCR
+  Future<NidOcrData> readBack(String path) async {
+    if (kDebugMode) {
+      debugPrint('=== NID Back OCR Started ===');
+      debugPrint('Image path: $path');
+    }
+
+    try {
+      // Run both OCR operations in parallel
+      if (kDebugMode) {
+        debugPrint(
+            'Running Google ML Kit Latin OCR and Tesseract Bengali OCR in parallel...');
+      }
+
+      final results = await Future.wait([
+        // Google ML Kit Latin OCR
+        _latinRecognizer.processImage(InputImage.fromFilePath(path)),
+        // Tesseract Bengali OCR
+        _runBengaliOcr(path),
+      ]);
+
+      final latinResult = results[0] as RecognizedText;
+      final bengaliText = results[1] as String?;
+
+      if (kDebugMode) {
+        debugPrint('Latin OCR result: ${latinResult.text.length} characters');
+        debugPrint('Latin OCR text: ${latinResult.text}');
+        if (bengaliText != null) {
+          debugPrint(
+              'Bengali OCR result length: ${bengaliText.length} characters');
+          debugPrint('=== RAW BENGALI OCR TEXT START ===');
+          debugPrint(bengaliText);
+          debugPrint('=== RAW BENGALI OCR TEXT END ===');
+        } else {
+          debugPrint('Bengali OCR returned null');
+        }
+      }
+
+      return parseBack(latinResult.text, bengaliText: bengaliText);
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('OCR failed completely: $e');
+        debugPrint('Stack trace: $stackTrace');
+      }
+      return const NidOcrData(rawText: '');
+    }
+  }
 
   static NidOcrData parse(String latinText, {String? bengaliText}) {
     if (kDebugMode) {
@@ -144,17 +216,26 @@ class NidOcrService {
     final banglaMotherName = bengaliText != null
         ? _extractBengaliParentName(bengaliText, 'মাতা')
         : null;
+    final address = bengaliText != null
+        ? _extractBengaliField(bengaliText, 'ঠিকানা')
+        : null;
+    final postOffice =
+        bengaliText != null ? _extractBengaliField(bengaliText, 'ডাকঘর') : null;
 
     if (kDebugMode) {
       debugPrint('English name extracted: $englishName');
       debugPrint('Bangla name extracted: $banglaName');
       debugPrint('Bangla father name extracted: $banglaFatherName');
       debugPrint('Bangla mother name extracted: $banglaMotherName');
+      debugPrint('Address extracted: $address');
+      debugPrint('Post office extracted: $postOffice');
       debugPrint('[NID OCR] Final Bangla name in parse(): $banglaName');
       debugPrint(
           '[NID OCR] Final Bangla father name in parse(): $banglaFatherName');
       debugPrint(
           '[NID OCR] Final Bangla mother name in parse(): $banglaMotherName');
+      debugPrint('[NID OCR] Final address in parse(): $address');
+      debugPrint('[NID OCR] Final post office in parse(): $postOffice');
     }
 
     return NidOcrData(
@@ -166,10 +247,43 @@ class NidOcrService {
       englishName: englishName,
       banglaFatherName: banglaFatherName,
       banglaMotherName: banglaMotherName,
+      address: address,
+      postOffice: postOffice,
       bloodGroup: _extractBloodGroup(latinText),
       looksLikeNidFront: nid != null ||
           upper.contains('NATIONAL ID') ||
           upper.contains('ID NO'),
+    );
+  }
+
+  static NidOcrData parseBack(String latinText, {String? bengaliText}) {
+    if (kDebugMode) {
+      debugPrint('=== Parsing NID Back OCR Results ===');
+      debugPrint('Latin text length: ${latinText.length}');
+      debugPrint('Bengali text length: ${bengaliText?.length ?? 0}');
+    }
+
+    final bloodGroup = _extractBloodGroup(latinText);
+    final address = bengaliText != null
+        ? _extractAddress(bengaliText)
+        : null;
+    final postOffice =
+        bengaliText != null ? _extractPostOffice(bengaliText) : null;
+
+    if (kDebugMode) {
+      debugPrint('Blood group extracted: $bloodGroup');
+      debugPrint('Address extracted: $address');
+      debugPrint('Post office extracted: $postOffice');
+      debugPrint('[NID OCR] Final address in parseBack(): $address');
+      debugPrint('[NID OCR] Final post office in parseBack(): $postOffice');
+    }
+
+    return NidOcrData(
+      rawText: latinText,
+      bloodGroup: bloodGroup,
+      address: address,
+      postOffice: postOffice,
+      looksLikeNidFront: false,
     );
   }
 
@@ -743,6 +857,498 @@ class NidOcrService {
 
     if (kDebugMode) {
       debugPrint('Blood group not found in OCR text');
+    }
+    return null;
+  }
+
+  /// Extracts a Bengali field value from OCR text using a label
+  /// Supports both English colon (:) and Bengali colon (ঃ)
+  /// Handles label and value on same line or separate lines
+  /// Supports multiline text by collecting lines until next label
+  static String? _extractBengaliField(String bengaliText, String label) {
+    if (bengaliText.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('Bengali text is empty, returning null for $label');
+      }
+      return null;
+    }
+
+    if (kDebugMode) {
+      debugPrint('=== Extracting Bengali Field ===');
+      debugPrint('Label: $label');
+      debugPrint('Input text length: ${bengaliText.length}');
+    }
+
+    final lines = bengaliText.split('\n').map((l) => l.trim()).toList();
+
+    if (kDebugMode) {
+      debugPrint('Total lines after split: ${lines.length}');
+      for (int i = 0; i < lines.length; i++) {
+        debugPrint('Line $i: "${lines[i]}" (length: ${lines[i].length})');
+      }
+    }
+
+    // Find the label
+    int labelLineIndex = -1;
+    for (int i = 0; i < lines.length; i++) {
+      if (lines[i].contains(label)) {
+        labelLineIndex = i;
+        if (kDebugMode) {
+          debugPrint('Found "$label" at line $i: "${lines[i]}"');
+        }
+        break;
+      }
+    }
+
+    if (labelLineIndex == -1) {
+      if (kDebugMode) {
+        debugPrint('✗ No valid Bangla $label found in OCR output');
+      }
+      return null;
+    }
+
+    final labelLine = lines[labelLineIndex];
+    String? fieldValue;
+
+    // Method 1: Extract after English colon
+    if (labelLine.contains(':')) {
+      final colonIndex = labelLine.indexOf(':');
+      final afterColon = labelLine.substring(colonIndex + 1).trim();
+      if (afterColon.isNotEmpty) {
+        fieldValue = afterColon;
+        if (kDebugMode) {
+          debugPrint('  Candidate after colon: "$afterColon"');
+        }
+      }
+    }
+
+    // Method 2: Extract after Bengali colon if Method 1 failed
+    if (fieldValue == null && labelLine.contains('ঃ')) {
+      final colonIndex = labelLine.indexOf('ঃ');
+      final afterBengaliColon = labelLine.substring(colonIndex + 1).trim();
+      if (afterBengaliColon.isNotEmpty) {
+        fieldValue = afterBengaliColon;
+        if (kDebugMode) {
+          debugPrint('  Candidate after ঃ: "$afterBengaliColon"');
+        }
+      }
+    }
+
+    // Method 3: Extract after label if no colon found
+    if (fieldValue == null) {
+      final labelIndex = labelLine.indexOf(label);
+      if (labelIndex >= 0 && labelIndex + label.length < labelLine.length) {
+        final afterLabel =
+            labelLine.substring(labelIndex + label.length).trim();
+        if (afterLabel.isNotEmpty) {
+          fieldValue = afterLabel;
+          if (kDebugMode) {
+            debugPrint('  Candidate after $label: "$afterLabel"');
+          }
+        }
+      }
+    }
+
+    // Method 4: If no value on same line, use next line
+    if (fieldValue == null && labelLineIndex + 1 < lines.length) {
+      final nextLine = lines[labelLineIndex + 1].trim();
+      if (nextLine.isNotEmpty) {
+        fieldValue = nextLine;
+        if (kDebugMode) {
+          debugPrint('  Candidate from next line: "$nextLine"');
+        }
+      }
+    }
+
+    // For address/post office, collect multiline until next recognized label
+    if (fieldValue != null) {
+      final knownLabels = [
+        'নাম',
+        'পিতা',
+        'মাতা',
+        'জন্ম',
+        'ঠিকানা',
+        'ডাকঘর',
+        'রক্তের গ্রুপ',
+        'NID',
+        'ID',
+        'স্বাক্ষর'
+      ];
+      final multilineValue = StringBuffer(fieldValue);
+
+      for (int i = labelLineIndex + 2; i < lines.length; i++) {
+        final line = lines[i].trim();
+        if (line.isEmpty) continue;
+
+        // Check if this line contains a known label
+        bool isLabel = false;
+        for (final knownLabel in knownLabels) {
+          if (line.contains(knownLabel)) {
+            isLabel = true;
+            break;
+          }
+        }
+
+        if (isLabel) {
+          break; // Stop at next label
+        }
+
+        multilineValue.write(' $line');
+      }
+
+      fieldValue = multilineValue.toString();
+    }
+
+    if (fieldValue != null) {
+      // Clean and validate - for address/post office, allow colons and commas
+      final cleaned =
+          fieldValue.replaceAll(RegExp(r'[^\u0980-\u09DF\s:,০-৯]'), '').trim();
+      final normalized = cleaned.replaceAll(RegExp(r'\s+'), ' ');
+
+      if (normalized.length >= 2) {
+        if (kDebugMode) {
+          debugPrint('✓ Valid $label found: "$normalized"');
+          debugPrint('[NID OCR] Extracted Bangla $label: $normalized');
+        }
+        return normalized;
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint('✗ No valid Bangla $label found in OCR output');
+      debugPrint('[NID OCR] Extracted Bangla $label: null');
+    }
+    return null;
+  }
+
+  /// Extracts address from NID back by finding গ্রাম/রাস্তা label
+  /// and extracting the value after it, excluding the label itself
+  static String? _extractAddress(String bengaliText) {
+    if (bengaliText.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('Bengali text is empty, returning null for address');
+      }
+      return null;
+    }
+
+    if (kDebugMode) {
+      debugPrint('=== Extracting Address ===');
+      debugPrint('Input text length: ${bengaliText.length}');
+    }
+
+    final lines = bengaliText.split('\n').map((l) => l.trim()).toList();
+
+    if (kDebugMode) {
+      debugPrint('Total lines after split: ${lines.length}');
+      for (int i = 0; i < lines.length; i++) {
+        debugPrint('Line $i: "${lines[i]}" (length: ${lines[i].length})');
+      }
+    }
+
+    // Look for গ্রাম/রাস্তা label (village/road)
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+
+      // Check for গ্রাম/রাস্তা or variations
+      if (line.contains('গ্রাম') || line.contains('রাস্তা')) {
+        if (kDebugMode) {
+          debugPrint('Found address label at line $i: "$line"');
+        }
+
+        String? fieldValue;
+        bool valueFromSameLine = false;
+
+        // Find label position - handle both "গ্রাম/রাস্তা:" and individual labels
+        int labelIndex = -1;
+        int labelLength = 0;
+
+        // Check for combined label "গ্রাম/রাস্তা:"
+        final combinedIndex = line.indexOf('গ্রাম/রাস্তা:');
+        if (combinedIndex >= 0) {
+          labelIndex = combinedIndex;
+          labelLength = 13; // Length of 'গ্রাম/রাস্তা:' (including colon)
+          // Extract directly after the combined label
+          if (labelIndex + labelLength < line.length) {
+            final afterLabel = line.substring(labelIndex + labelLength).trim();
+            if (afterLabel.isNotEmpty) {
+              fieldValue = afterLabel;
+              valueFromSameLine = true;
+              if (kDebugMode) {
+                debugPrint('  Candidate after combined label: "$afterLabel"');
+              }
+            }
+          }
+        } else {
+          // Fallback to individual labels
+          final gramIndex = line.indexOf('গ্রাম');
+          final roadIndex = line.indexOf('রাস্তা');
+          if (gramIndex >= 0) {
+            labelIndex = gramIndex;
+            labelLength = 6; // Length of 'গ্রাম'
+          } else if (roadIndex >= 0) {
+            labelIndex = roadIndex;
+            labelLength = 7; // Length of 'রাস্তা'
+          }
+        }
+
+        // Method 1: Extract after colon if it appears right after the label
+        if (fieldValue == null && labelIndex >= 0 && labelIndex + labelLength < line.length) {
+          // Check if colon appears immediately after label (e.g., "গ্রাম:")
+          if (labelIndex + labelLength < line.length && line[labelIndex + labelLength] == ':') {
+            final afterColon = line.substring(labelIndex + labelLength + 1).trim();
+            if (afterColon.isNotEmpty) {
+              fieldValue = afterColon;
+              valueFromSameLine = true;
+              if (kDebugMode) {
+                debugPrint('  Candidate after colon: "$afterColon"');
+              }
+            }
+          }
+        }
+
+        // Method 2: Extract after Bengali colon if it appears right after the label
+        if (fieldValue == null && labelIndex >= 0 && labelIndex + labelLength < line.length) {
+          // Check if Bengali colon appears immediately after label (e.g., "গ্রামঃ")
+          if (labelIndex + labelLength < line.length && line[labelIndex + labelLength] == 'ঃ') {
+            final afterBengaliColon = line.substring(labelIndex + labelLength + 1).trim();
+            if (afterBengaliColon.isNotEmpty) {
+              fieldValue = afterBengaliColon;
+              valueFromSameLine = true;
+              if (kDebugMode) {
+                debugPrint('  Candidate after ঃ: "$afterBengaliColon"');
+              }
+            }
+          }
+        }
+
+        // Method 3: Extract after label if no colon found (for combined label with colon already in length)
+        if (fieldValue == null && labelIndex >= 0 && labelIndex + labelLength < line.length) {
+          final afterLabel = line.substring(labelIndex + labelLength).trim();
+          // Only use if it doesn't start with a colon (already handled)
+          if (afterLabel.isNotEmpty && !afterLabel.startsWith(':') && !afterLabel.startsWith('ঃ')) {
+            fieldValue = afterLabel;
+            valueFromSameLine = true;
+            if (kDebugMode) {
+              debugPrint('  Candidate after label: "$afterLabel"');
+            }
+          }
+        }
+
+        // Method 4: Use next line if current line only has label
+        if (fieldValue == null && i + 1 < lines.length) {
+          final nextLine = lines[i + 1].trim();
+          if (nextLine.isNotEmpty) {
+            fieldValue = nextLine;
+            if (kDebugMode) {
+              debugPrint('  Candidate from next line: "$nextLine"');
+            }
+          }
+        }
+
+        // Collect multiline until ডাকঘর label
+        if (fieldValue != null) {
+          // If value is on same line and contains ডাকঘর:, split it
+          if (valueFromSameLine && fieldValue.contains('ডাকঘর:')) {
+            final dakgharIndex = fieldValue.indexOf('ডাকঘর:');
+            fieldValue = fieldValue.substring(0, dakgharIndex).trim();
+          } else if (valueFromSameLine && fieldValue.contains('ডাকঘরঃ')) {
+            final dakgharIndex = fieldValue.indexOf('ডাকঘরঃ');
+            fieldValue = fieldValue.substring(0, dakgharIndex).trim();
+          } else if (!valueFromSameLine) {
+            // Only collect multiline if value is from next line
+            final multilineValue = StringBuffer(fieldValue);
+
+            // Start from i+2 (skip label and value lines)
+            for (int j = i + 2; j < lines.length; j++) {
+              final nextLine = lines[j].trim();
+              if (nextLine.isEmpty) continue;
+
+              // Stop at ডাকঘর label
+              if (nextLine.contains('ডাকঘর')) {
+                break;
+              }
+
+              multilineValue.write(' $nextLine');
+            }
+
+            fieldValue = multilineValue.toString();
+          }
+        }
+
+        if (fieldValue != null) {
+          // Clean - keep Bengali letters, spaces, colons, commas, and digits
+          // We already extracted after the label, so no need to remove label text
+          final cleaned = fieldValue
+              .replaceAll(RegExp(r'[^\u0980-\u09DF\s:,\০-৯]'), '')
+              .trim();
+          final normalized = cleaned.replaceAll(RegExp(r'\s+'), ' ');
+          // Remove trailing comma if present
+          final trimmed = normalized.endsWith(',') ? normalized.substring(0, normalized.length - 1).trim() : normalized;
+
+          if (trimmed.length >= 2) {
+            if (kDebugMode) {
+              debugPrint('✓ Valid address found: "$trimmed"');
+              debugPrint('[NID OCR] Extracted address: $trimmed');
+            }
+            return trimmed;
+          }
+        }
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint('✗ No valid address found in OCR output');
+      debugPrint('[NID OCR] Extracted address: null');
+    }
+    return null;
+  }
+
+  /// Extracts post office from NID back by finding ডাকঘর label
+  /// and extracting the value after it, including post code when available
+  static String? _extractPostOffice(String bengaliText) {
+    if (bengaliText.isEmpty) {
+      if (kDebugMode) {
+        debugPrint('Bengali text is empty, returning null for post office');
+      }
+      return null;
+    }
+
+    if (kDebugMode) {
+      debugPrint('=== Extracting Post Office ===');
+      debugPrint('Input text length: ${bengaliText.length}');
+    }
+
+    final lines = bengaliText.split('\n').map((l) => l.trim()).toList();
+
+    if (kDebugMode) {
+      debugPrint('Total lines after split: ${lines.length}');
+      for (int i = 0; i < lines.length; i++) {
+        debugPrint('Line $i: "${lines[i]}" (length: ${lines[i].length})');
+      }
+    }
+
+    // Look for ডাকঘর label
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+
+      if (line.contains('ডাকঘর')) {
+        if (kDebugMode) {
+          debugPrint('Found post office label at line $i: "$line"');
+        }
+
+        String? fieldValue;
+        bool valueFromSameLine = false;
+
+        // Method 1: Extract after colon (specifically after ডাকঘর:)
+        final dakgharIndex = line.indexOf('ডাকঘর');
+        if (dakgharIndex >= 0) {
+          final colonIndex = line.indexOf(':', dakgharIndex);
+          if (colonIndex >= 0) {
+            final afterColon = line.substring(colonIndex + 1).trim();
+            if (afterColon.isNotEmpty) {
+              fieldValue = afterColon;
+              valueFromSameLine = true;
+              if (kDebugMode) {
+                debugPrint('  Candidate after ডাকঘর:: "$afterColon"');
+              }
+            }
+          }
+        }
+
+        // Method 2: Extract after Bengali colon (specifically after ডাকঘরঃ)
+        if (fieldValue == null && dakgharIndex >= 0) {
+          final bengaliColonIndex = line.indexOf('ঃ', dakgharIndex);
+          if (bengaliColonIndex >= 0) {
+            final afterBengaliColon = line.substring(bengaliColonIndex + 1).trim();
+            if (afterBengaliColon.isNotEmpty) {
+              fieldValue = afterBengaliColon;
+              valueFromSameLine = true;
+              if (kDebugMode) {
+                debugPrint('  Candidate after ডাকঘরঃ: "$afterBengaliColon"');
+              }
+            }
+          }
+        }
+
+        // Method 3: Extract after "ডাকঘর" if no colon found
+        if (fieldValue == null && dakgharIndex >= 0 && dakgharIndex + 6 < line.length) {
+          final afterLabel = line.substring(dakgharIndex + 6).trim();
+          if (afterLabel.isNotEmpty) {
+            fieldValue = afterLabel;
+            valueFromSameLine = true;
+            if (kDebugMode) {
+              debugPrint('  Candidate after ডাকঘর: "$afterLabel"');
+            }
+          }
+        }
+
+        // Method 4: Use next line if current line only has label
+        if (fieldValue == null && i + 1 < lines.length) {
+          final nextLine = lines[i + 1].trim();
+          if (nextLine.isNotEmpty) {
+            fieldValue = nextLine;
+            if (kDebugMode) {
+              debugPrint('  Candidate from next line: "$nextLine"');
+            }
+          }
+        }
+
+        // Collect multiline until next location field or end of text
+        if (fieldValue != null && !valueFromSameLine) {
+          final locationLabels = [
+            'উপজেলা',
+            'জেলা',
+            'রক্তের গ্রুপ',
+            'NID',
+            'ID',
+            'স্বাক্ষর'
+          ];
+          final multilineValue = StringBuffer(fieldValue);
+
+          // Start from i+2 (skip label and value lines)
+          for (int j = i + 2; j < lines.length; j++) {
+            final nextLine = lines[j].trim();
+            if (nextLine.isEmpty) continue;
+
+            // Stop at next location field
+            bool isLocationLabel = false;
+            for (final locationLabel in locationLabels) {
+              if (nextLine.contains(locationLabel)) {
+                isLocationLabel = true;
+                break;
+              }
+            }
+
+            if (isLocationLabel) {
+              break;
+            }
+
+            multilineValue.write(' $nextLine');
+          }
+
+          fieldValue = multilineValue.toString();
+        }
+
+        if (fieldValue != null) {
+          // Clean - keep Bengali letters, spaces, commas, colons, hyphens, and digits (for post code)
+          final cleaned =
+              fieldValue.replaceAll(RegExp(r'[^\u0980-\u09DF\s:,\-০-৯]'), '').trim();
+          final normalized = cleaned.replaceAll(RegExp(r'\s+'), ' ');
+
+          if (normalized.length >= 2) {
+            if (kDebugMode) {
+              debugPrint('✓ Valid post office found: "$normalized"');
+              debugPrint('[NID OCR] Extracted post office: $normalized');
+            }
+            return normalized;
+          }
+        }
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint('✗ No valid post office found in OCR output');
+      debugPrint('[NID OCR] Extracted post office: null');
     }
     return null;
   }
